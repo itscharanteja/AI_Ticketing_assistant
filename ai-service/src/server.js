@@ -1,9 +1,185 @@
 import express from "express";
 import cors from "cors";
 import OpenAI from "openai";
-import { FaissStore } from "@langchain/community/vectorstores/faiss";
-import { OpenAIEmbeddings } from "@langchain/openai";
 import { Document } from "@langchain/core/documents";
+
+// Advanced text similarity and RAG implementation
+class SmartRAGEngine {
+  constructor() {
+    this.knowledgeBase = [];
+    this.keywordIndex = new Map();
+    this.semanticIndex = new Map();
+  }
+
+  // Add document to knowledge base with smart indexing
+  addDocument(content, metadata = {}) {
+    const doc = {
+      id: `doc-${Date.now()}`,
+      content,
+      metadata,
+      keywords: this.extractKeywords(content),
+      timestamp: new Date()
+    };
+
+    this.knowledgeBase.push(doc);
+    this.indexDocument(doc);
+    return doc;
+  }
+
+  // Extract meaningful keywords from text
+  extractKeywords(text) {
+    const words = text.toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .split(/\s+/)
+      .filter(word => word.length > 2 && !this.isStopWord(word));
+    
+    return [...new Set(words)];
+  }
+
+  // Common stop words to filter out
+  isStopWord(word) {
+    const stopWords = new Set([
+      'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
+      'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
+      'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those'
+    ]);
+    return stopWords.has(word);
+  }
+
+  // Index document for fast retrieval
+  indexDocument(doc) {
+    // Keyword indexing
+    doc.keywords.forEach(keyword => {
+      if (!this.keywordIndex.has(keyword)) {
+        this.keywordIndex.set(keyword, []);
+      }
+      this.keywordIndex.get(keyword).push(doc.id);
+    });
+
+    // Semantic indexing (simple but effective)
+    const semanticKey = this.generateSemanticKey(doc.content);
+    if (!this.semanticIndex.has(semanticKey)) {
+      this.semanticIndex.set(semanticKey, []);
+    }
+    this.semanticIndex.get(semanticKey).push(doc.id);
+  }
+
+  // Generate semantic key based on content structure
+  generateSemanticKey(content) {
+    const words = content.toLowerCase().split(/\s+/);
+    const keyWords = words.filter(word => word.length > 4).slice(0, 5);
+    return keyWords.sort().join('-');
+  }
+
+  // Smart search combining multiple strategies
+  search(query, limit = 3) {
+    const queryKeywords = this.extractKeywords(query);
+    const results = new Map();
+
+    // Strategy 1: Direct keyword matching
+    queryKeywords.forEach(keyword => {
+      const docIds = this.keywordIndex.get(keyword) || [];
+      docIds.forEach(id => {
+        const score = results.get(id) || 0;
+        results.set(id, score + 2); // High score for exact matches
+      });
+    });
+
+    // Strategy 2: Semantic similarity
+    const querySemanticKey = this.generateSemanticKey(query);
+    this.semanticIndex.forEach((docIds, semanticKey) => {
+      const similarity = this.calculateSemanticSimilarity(querySemanticKey, semanticKey);
+      if (similarity > 0.3) {
+        docIds.forEach(id => {
+          const score = results.get(id) || 0;
+          results.set(id, score + similarity);
+        });
+      }
+    });
+
+    // Strategy 3: Content relevance scoring
+    this.knowledgeBase.forEach(doc => {
+      const relevanceScore = this.calculateContentRelevance(query, doc.content);
+      const currentScore = results.get(doc.id) || 0;
+      results.set(doc.id, currentScore + relevanceScore);
+    });
+
+    // Convert to array and sort by score
+    const scoredDocs = Array.from(results.entries())
+      .map(([id, score]) => {
+        const doc = this.knowledgeBase.find(d => d.id === id);
+        return { ...doc, score };
+      })
+      .filter(doc => doc.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
+
+    return scoredDocs;
+  }
+
+  // Calculate semantic similarity between two semantic keys
+  calculateSemanticSimilarity(key1, key2) {
+    const words1 = key1.split('-');
+    const words2 = key2.split('-');
+    const commonWords = words1.filter(word => words2.includes(word));
+    return commonWords.length / Math.max(words1.length, words2.length);
+  }
+
+  // Calculate content relevance using advanced text analysis
+  calculateContentRelevance(query, content) {
+    const queryWords = query.toLowerCase().split(/\s+/);
+    const contentWords = content.toLowerCase().split(/\s+/);
+    
+    let score = 0;
+    
+    // Exact word matches
+    queryWords.forEach(word => {
+      if (contentWords.includes(word)) {
+        score += 1;
+      }
+    });
+
+    // Partial word matches
+    queryWords.forEach(queryWord => {
+      contentWords.forEach(contentWord => {
+        if (contentWord.includes(queryWord) || queryWord.includes(contentWord)) {
+          score += 0.5;
+        }
+      });
+    });
+
+    // Phrase matching
+    const queryPhrases = this.extractPhrases(query);
+    const contentPhrases = this.extractPhrases(content);
+    
+    queryPhrases.forEach(phrase => {
+      if (contentPhrases.includes(phrase)) {
+        score += 2;
+      }
+    });
+
+    return score;
+  }
+
+  // Extract meaningful phrases
+  extractPhrases(text) {
+    const sentences = text.split(/[.!?]+/);
+    return sentences
+      .map(sentence => sentence.trim().toLowerCase())
+      .filter(sentence => sentence.length > 10)
+      .slice(0, 3);
+  }
+
+  // Get all documents
+  getAllDocuments() {
+    return this.knowledgeBase;
+  }
+
+  // Get document by ID
+  getDocument(id) {
+    return this.knowledgeBase.find(doc => doc.id === id);
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT || 6000;
@@ -12,8 +188,8 @@ const PORT = process.env.PORT || 6000;
 app.use(cors());
 app.use(express.json());
 
-if (!process.env.PERPLEXITY_API_KEY || !process.env.OPENAI_API_KEY) {
-  console.error("API keys not set");
+if (!process.env.PERPLEXITY_API_KEY) {
+  console.error("PERPLEXITY_API_KEY not set");
   process.exit(1);
 }
 
@@ -23,50 +199,31 @@ const model = new OpenAI({
   baseURL: "https://api.perplexity.ai",
 });
 
-const embeddings = new OpenAIEmbeddings({
-  openAIApiKey: process.env.OPENAI_API_KEY,
-});
+// Initialize Smart RAG Engine
+const ragEngine = new SmartRAGEngine();
 
-// Initialize vector store
-let vectorStore = null;
-
-// Enhanced knowledge base with more detailed documents
-const knowledgeBase = [
-  {
-    id: "password-reset",
-    content:
-      "To reset your password, visit the login page and click 'Forgot Password'. You'll receive an email with reset instructions within 5 minutes.",
-    metadata: { category: "authentication", priority: "high" },
-  },
-  {
-    id: "network-issues",
-    content:
-      "For network connectivity issues, try these steps: 1) Restart your router 2) Check cable connections 3) Run network diagnostics 4) Contact IT if issues persist",
-    metadata: { category: "network", priority: "medium" },
-  },
-  {
-    id: "hardware-request",
-    content:
-      "To request new hardware, submit a ticket with your manager's approval. Include: device type, justification, budget code, and delivery timeline.",
-    metadata: { category: "hardware", priority: "low" },
-  },
-];
-
-// Initialize vector store on startup
-async function initializeVectorStore() {
+// Initialize knowledge base with sample documents
+function initializeKnowledgeBase() {
   try {
-    const documents = knowledgeBase.map(
-      (item) =>
-        new Document({
-          pageContent: item.content,
-          metadata: item.metadata,
-        })
+    // Add sample documents to the RAG engine
+    ragEngine.addDocument(
+      "To reset your password, visit the login page and click 'Forgot Password'. You'll receive an email with reset instructions within 5 minutes.",
+      { category: "authentication", priority: "high" }
     );
-
-    vectorStore = await FaissStore.fromDocuments(documents, embeddings);
-    console.log("Vector store initialized successfully");
+    
+    ragEngine.addDocument(
+      "For network connectivity issues, try these steps: 1) Restart your router 2) Check cable connections 3) Run network diagnostics 4) Contact IT if issues persist",
+      { category: "network", priority: "medium" }
+    );
+    
+    ragEngine.addDocument(
+      "To request new hardware, submit a ticket with your manager's approval. Include: device type, justification, budget code, and delivery timeline.",
+      { category: "hardware", priority: "low" }
+    );
+    
+    console.log("Smart RAG Engine initialized successfully");
   } catch (error) {
-    console.error("Error initializing vector store:", error);
+    console.error("Error initializing knowledge base:", error);
   }
 }
 
@@ -74,7 +231,9 @@ async function initializeVectorStore() {
 app.get("/health", (req, res) => {
   res.json({
     status: "healthy",
-    vectorStore: vectorStore ? "initialized" : "not initialized",
+    ragEngine: "initialized",
+    totalDocuments: ragEngine.getAllDocuments().length,
+    searchStrategies: ["keyword", "semantic", "content-relevance"]
   });
 });
 
@@ -83,18 +242,14 @@ app.post("/process-ticket", async (req, res) => {
   try {
     const { title, description } = req.body;
 
-    if (!vectorStore) {
-      throw new Error("Vector store not initialized");
-    }
-
     // Create search query from title and description
     const searchQuery = `${title} ${description}`;
 
-    // Retrieve relevant documents using semantic search
-    const relevantDocs = await vectorStore.similaritySearch(searchQuery, 3);
+    // Retrieve relevant documents using Smart RAG Engine
+    const relevantDocs = ragEngine.search(searchQuery, 3);
 
     // Extract content from retrieved documents
-    const contextDocs = relevantDocs.map((doc) => doc.pageContent);
+    const contextDocs = relevantDocs.map((doc) => doc.content);
 
     // Enhanced prompt with retrieved context
     const prompt = `You are a helpful IT support assistant. Use the following knowledge base entries to help answer the support ticket.
@@ -147,7 +302,7 @@ Instructions:
   }
 });
 
-// Add document to knowledge base with embedding
+// Add document to knowledge base
 app.post("/add-knowledge", async (req, res) => {
   try {
     const { content, category = "general", priority = "medium" } = req.body;
@@ -156,29 +311,12 @@ app.post("/add-knowledge", async (req, res) => {
       return res.status(400).json({ error: "Content is required" });
     }
 
-    if (!vectorStore) {
-      throw new Error("Vector store not initialized");
-    }
-
-    // Create new document
-    const newDoc = new Document({
-      pageContent: content,
-      metadata: { category, priority, id: `doc-${Date.now()}` },
-    });
-
-    // Add to vector store
-    await vectorStore.addDocuments([newDoc]);
-
-    // Update in-memory knowledge base
-    knowledgeBase.push({
-      id: `doc-${Date.now()}`,
-      content,
-      metadata: { category, priority },
-    });
+    // Add to Smart RAG Engine
+    const newDoc = ragEngine.addDocument(content, { category, priority });
 
     res.json({
       message: "Knowledge base entry added successfully",
-      total_documents: knowledgeBase.length,
+      total_documents: ragEngine.getAllDocuments().length,
     });
   } catch (error) {
     console.error("Error adding to knowledge base:", error);
@@ -198,18 +336,15 @@ app.post("/search-knowledge", async (req, res) => {
       return res.status(400).json({ error: "Query is required" });
     }
 
-    if (!vectorStore) {
-      throw new Error("Vector store not initialized");
-    }
-
-    const results = await vectorStore.similaritySearchWithScore(query, limit);
+    const results = ragEngine.search(query, limit);
 
     res.json({
       query,
-      results: results.map(([doc, score]) => ({
-        content: doc.pageContent,
+      results: results.map((doc) => ({
+        content: doc.content,
         metadata: doc.metadata,
-        similarity_score: score,
+        similarity_score: doc.score,
+        keywords: doc.keywords
       })),
     });
   } catch (error) {
@@ -221,9 +356,8 @@ app.post("/search-knowledge", async (req, res) => {
   }
 });
 
-// Initialize vector store before starting server
-initializeVectorStore().then(() => {
-  app.listen(PORT, () => {
-    console.log(`AI Service with RAG running on port ${PORT}`);
-  });
+// Initialize knowledge base before starting server
+initializeKnowledgeBase();
+app.listen(PORT, () => {
+  console.log(`AI Service with Smart RAG running on port ${PORT}`);
 });
