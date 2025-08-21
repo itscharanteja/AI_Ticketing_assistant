@@ -17,7 +17,7 @@ This combines **scalable backend engineering** with **AI-driven automation** —
 - 📩 Submit new support tickets (title + description).  
 - 🤖 AI assistant auto-resolves tickets if knowledge base has relevant answers.  
 - 🗄️ Tickets stored in PostgreSQL database with status tracking.  
-- 🔍 RAG pipeline with vector search (FAISS) for document retrieval.  
+- 🔍 Smart RAG pipeline with custom indexing for document retrieval.  
 - 🧩 Modular **microservice architecture**: Ticket Service + AI Service.  
 - 🐳 Dockerized setup with Docker Compose.  
 - ⚡ Optional lightweight React UI for ticket submission & viewing.  
@@ -28,7 +28,7 @@ This combines **scalable backend engineering** with **AI-driven automation** —
 ## 🛠️ Tech Stack
 - **Backend:** Node.js + Express  
 - **Database:** PostgreSQL  
-- **AI / RAG:** LangChain + OpenAI API (or Hugging Face LLM) + FAISS vector DB  
+- **AI / RAG:** Perplexity AI API + Custom SmartRAGEngine  
 - **Containerization:** Docker + Docker Compose  
 - **Frontend (optional):** React  
 - **CI/CD:** GitHub Actions  
@@ -37,7 +37,7 @@ This combines **scalable backend engineering** with **AI-driven automation** —
 
 ## 📂 Architecture
 ```
-/ai-service        → AI pipeline (LangChain, vector DB, LLM calls)
+/ai-service        → AI pipeline (Perplexity AI + Custom RAG Engine)
 /ticket-service    → Ticket CRUD APIs (Express + PostgreSQL)
 /frontend          → Simple React UI (optional)
 /docker-compose.yml
@@ -62,7 +62,7 @@ cd ai-ticketing-assistant
 ### 2. Setup Environment
 Create a `.env` file in both `ai-service/` and `ticket-service/`:
 ```
-OPENAI_API_KEY=your_openai_key
+PERPLEXITY_API_KEY=your_perplexity_api_key
 DB_HOST=localhost
 DB_USER=postgres
 DB_PASS=password
@@ -129,6 +129,7 @@ npm test
 - Integrate with Slack or email for notifications.  
 - Expand KB ingestion with PDFs/Confluence docs.  
 - Analytics dashboard for support ticket trends.  
+- Consider upgrading to vector database (FAISS) for larger scale deployments.  
 
 ---
 
