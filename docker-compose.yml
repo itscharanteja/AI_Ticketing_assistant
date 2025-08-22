@@ -27,11 +27,25 @@ services:
   ai-service:
     build: ./ai-service
     ports:
-      - "6000:6000"
+      - "6001:6000"
     environment:
       - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
     depends_on:
       - ticket-service
+
+  frontend:
+    build: 
+      context: ./frontend
+      args:
+        - REACT_APP_TICKET_API_URL=http://localhost:5001
+        - REACT_APP_AI_API_URL=http://localhost:6001
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_TICKET_API_URL=http://localhost:5001
+      - REACT_APP_AI_API_URL=http://localhost:6001
+    depends_on:
+      - ai-service
 
 volumes:
   postgres_data:
