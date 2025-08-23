@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import Dashboard from './Dashboard';
 import './App.css';
 
 function App() {
   const [formData, setFormData] = useState({
     title: '',
-    description: ''
+    description: '',
+    email: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [aiResponse, setAiResponse] = useState(null);
   const [showHumanButton, setShowHumanButton] = useState(false);
+  const [currentView, setCurrentView] = useState('form'); // 'form' or 'dashboard'
+  const [submissionMessage, setSubmissionMessage] = useState('');
 
   // Use environment variables for API endpoints
   const TICKET_API_URL = process.env.REACT_APP_TICKET_API_URL || 'http://localhost:5001';
@@ -38,14 +41,14 @@ function App() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.title.trim() || !formData.description.trim()) {
-      alert('Please fill in both title and description');
+    if (!formData.title.trim() || !formData.description.trim() || !formData.email.trim()) {
+      alert('Please fill in title, description, and email');
       return;
     }
 
     setIsSubmitting(true);
-    setAiResponse(null);
     setShowHumanButton(false);
+    setSubmissionMessage('');
 
     try {
       console.log('Submitting ticket to:', `${TICKET_URL}/tickets`);
@@ -66,6 +69,7 @@ function App() {
       );
 
       console.log('Ticket created:', ticketResponse.data);
+      const ticketId = ticketResponse.data.id;
 
       // Add a small delay to show the loading state
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -77,7 +81,9 @@ function App() {
         `${AI_URL}/process-ticket`, 
         {
           title: formData.title,
-          description: formData.description
+          description: formData.description,
+          userEmail: formData.email,
+          ticketId: ticketId
         },
         {
           timeout: 15000, // 15 second timeout for AI processing
@@ -91,8 +97,9 @@ function App() {
 
       if (aiResponse.data.status === 'escalated') {
         setShowHumanButton(true);
+        setSubmissionMessage(`Ticket escalated to human support. Check ${formData.email} for details. You can also view the ticket in the dashboard.`);
       } else {
-        setAiResponse(aiResponse.data.ai_response);
+        setSubmissionMessage(`Ticket processed successfully! Check ${formData.email} for the AI response. You can also view the complete ticket details in the dashboard.`);
       }
 
     } catch (error) {
@@ -118,9 +125,9 @@ function App() {
   const handleHumanEscalation = () => {
     alert('Ticket escalated to human support team. You will be contacted soon.');
     // Reset form
-    setFormData({ title: '', description: '' });
-    setAiResponse(null);
+    setFormData({ title: '', description: '', email: '' });
     setShowHumanButton(false);
+    setSubmissionMessage('');
   };
 
   return (
@@ -128,72 +135,116 @@ function App() {
       <header className="App-header">
         <h1>🤖 AI Ticket Assistant</h1>
         <p>Submit your support ticket and get instant AI-powered assistance</p>
+        <div className="nav-buttons">
+          <button 
+            onClick={() => setCurrentView('form')}
+            className={`nav-btn ${currentView === 'form' ? 'active' : ''}`}
+          >
+            📝 Submit Ticket
+          </button>
+          <button 
+            onClick={() => setCurrentView('dashboard')}
+            className={`nav-btn ${currentView === 'dashboard' ? 'active' : ''}`}
+          >
+            📊 View Dashboard
+          </button>
+        </div>
       </header>
 
       <main className="App-main">
-        <form onSubmit={handleSubmit} className="ticket-form">
-          <div className="form-group">
-            <label htmlFor="title">Ticket Title:</label>
-            <input
-              type="text"
-              id="title"
-              name="title"
-              value={formData.title}
-              onChange={handleInputChange}
-              placeholder="e.g., Password Reset Issue"
-              required
-            />
-          </div>
+        {currentView === 'form' ? (
+          <>
+            <form onSubmit={handleSubmit} className="ticket-form" autoComplete='off'> 
+              <div className="form-group">
+                <label htmlFor="title">Ticket Title:</label>
+                <input
+                  type="text"
+                  id="title"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleInputChange}
+                  placeholder="e.g., Password Reset Issue"
+                  required
+                />
+              </div>
 
-          <div className="form-group">
-            <label htmlFor="description">Description:</label>
-            <textarea
-              id="description"
-              name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-              placeholder="Please describe your issue in detail..."
-              rows="4"
-              required
-            />
-          </div>
+              <div className="form-group">
+                <label htmlFor="email">Your Email Address:</label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  placeholder="your.email@example.com"
+                  required
+                />
+                <small style={{color: '#666', fontSize: '12px'}}>
+                  We'll send the AI response to this email address
+                </small>
+              </div>
 
-          <button 
-            type="submit" 
-            disabled={isSubmitting}
-            className="submit-btn"
-          >
-            {isSubmitting ? 'Processing with AI...' : 'Submit Ticket'}
-          </button>
-        </form>
+              <div className="form-group">
+                <label htmlFor="description">Description:</label>
+                <textarea
+                  id="description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  placeholder="Please describe your issue in detail..."
+                  rows="4"
+                  required
+                />
+              </div>
 
-        {isSubmitting && (
-          <div className="loading">
-            <div className="spinner"></div>
-            <p>AI is analyzing your ticket... Please wait.</p>
-          </div>
-        )}
+              <button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="submit-btn"
+              >
+                {isSubmitting ? 'Processing with AI...' : 'Submit Ticket'}
+              </button>
+            </form>
 
-        {aiResponse && (
-          <div className="ai-response">
-            <h3>🤖 AI Response:</h3>
-            <div className="response-content">
-              {aiResponse}
-            </div>
-          </div>
-        )}
+            {isSubmitting && (
+              <div className="loading">
+                <div className="spinner"></div>
+                <p>AI is analyzing your ticket... Please wait.</p>
+              </div>
+            )}
 
-        {showHumanButton && (
-          <div className="human-escalation">
-            <h3>⚠️ Human Support Required</h3>
-            <p>This ticket requires human assistance as it's not covered in our knowledge base.</p>
-            <button 
-              onClick={handleHumanEscalation}
-              className="human-btn"
-            >
-              Escalate to Human Support
-            </button>
-          </div>
+            {submissionMessage && (
+              <div className="submission-message">
+                <h3>✅ Ticket Submitted</h3>
+                <p>{submissionMessage}</p>
+                <button 
+                  onClick={() => {
+                    setFormData({ title: '', description: '', email: '' });
+                    setSubmissionMessage('');
+                    setShowHumanButton(false);
+                  }}
+                  className="new-ticket-btn"
+                >
+                  Submit Another Ticket
+                </button>
+              </div>
+            )}
+
+            {showHumanButton && (
+              <div className="human-escalation">
+                <h3>⚠️ Human Support Required</h3>
+                <p>This ticket requires human assistance as it's not covered in our knowledge base.</p>
+                <button 
+                  onClick={handleHumanEscalation}
+                  className="human-btn"
+                >
+                  Escalate to Human Support
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <Dashboard />
         )}
       </main>
     </div>

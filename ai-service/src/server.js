@@ -1,7 +1,9 @@
 import express from "express";
 import cors from "cors";
 import OpenAI from "openai";
+import axios from "axios";
 import { Document } from "@langchain/core/documents";
+import EmailService from "./emailService.js";
 
 // Advanced text similarity and RAG implementation
 class SmartRAGEngine {
@@ -205,6 +207,9 @@ const model = new OpenAI({
 // Initialize Smart RAG Engine
 const ragEngine = new SmartRAGEngine();
 
+// Initialize Email Service
+const emailService = new EmailService();
+
 // Initialize knowledge base with sample documents
 function initializeKnowledgeBase() {
   try {
@@ -243,7 +248,7 @@ app.get("/health", (req, res) => {
 // RAG-enhanced ticket processing
 app.post("/process-ticket", async (req, res) => {
   try {
-    const { title, description } = req.body;
+    const { title, description, userEmail = "user@example.com", ticketId } = req.body;
 
     // Create search query from title and description
     const searchQuery = `${title} ${description}`;
@@ -287,14 +292,52 @@ Instructions:
     });
 
     const aiResponse = response.choices[0].message.content;
+    const isEscalated = aiResponse.includes("escalating to human support");
+    const ticketStatus = isEscalated ? "escalated" : "auto-resolved";
+
+    // Update ticket in database with AI response and status
+    console.log(`🔄 Attempting to update ticket ${ticketId} with status: ${ticketStatus}`);
+    try {
+      const ticketResponse = await axios.put(`http://ticket-service:5000/tickets/${ticketId}`, {
+        status: ticketStatus,
+        ai_response: aiResponse
+      });
+      
+      console.log('✅ Ticket updated in database with AI response');
+    } catch (dbError) {
+      console.error('❌ Database update error:', dbError);
+    }
+
+    // Send email notification
+    try {
+      console.log('📧 Sending email to:', userEmail);
+      
+      if (isEscalated) {
+        await emailService.sendHumanEscalationEmail(userEmail, {
+          id: ticketId,
+          title,
+          description
+        });
+        console.log('✅ Human escalation email sent successfully');
+      } else {
+        await emailService.sendAIResponseEmail(userEmail, {
+          id: ticketId,
+          title,
+          description
+        }, aiResponse);
+        console.log('✅ AI response email sent successfully');
+      }
+    } catch (emailError) {
+      console.error('❌ Email sending failed:', emailError);
+      // Continue with the response even if email fails
+    }
 
     res.json({
       ai_response: aiResponse,
-      status: aiResponse.includes("escalating to human support")
-        ? "escalated"
-        : "auto-resolved",
+      status: ticketStatus,
       retrieved_documents: relevantDocs.length,
       relevant_context: contextDocs,
+      email_sent: true
     });
   } catch (error) {
     console.error("Error processing ticket:", error);
