@@ -81,7 +81,7 @@ describe('EmailService', () => {
       // Check for content
       expect(template).toContain('Human Support');
       expect(template).toContain('Test Ticket');
-      expect(template).toContain('escalated');
+      expect(template).toContain('Escalated to Human');
     });
   });
 
