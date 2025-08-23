@@ -42,6 +42,21 @@ function Dashboard() {
     }
   };
 
+  const deleteTicket = async (ticketId) => {
+    if (!window.confirm(`Are you sure you want to delete ticket #${ticketId}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await axios.delete(`${TICKET_API_URL}/tickets/${ticketId}`);
+      // Remove the ticket from the local state
+      setTickets(tickets.filter(ticket => ticket.id !== ticketId));
+    } catch (err) {
+      console.error('Error deleting ticket:', err);
+      alert('Failed to delete ticket. Please try again.');
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'auto-resolved':
@@ -149,14 +164,23 @@ function Dashboard() {
                 )}
                 
                 <div className="ticket-meta">
-                  <span className="ticket-date">
-                    Created: {new Date(ticket.created_at).toLocaleDateString()}
-                  </span>
-                  {ticket.updated_at && ticket.updated_at !== ticket.created_at && (
-                    <span className="ticket-updated">
-                      Updated: {new Date(ticket.updated_at).toLocaleDateString()}
+                  <div className="ticket-meta-info">
+                    <span className="ticket-date">
+                      Created: {new Date(ticket.created_at).toLocaleDateString()}
                     </span>
-                  )}
+                    {ticket.updated_at && ticket.updated_at !== ticket.created_at && (
+                      <span className="ticket-updated">
+                        Updated: {new Date(ticket.updated_at).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                  <button 
+                    onClick={() => deleteTicket(ticket.id)}
+                    className="delete-btn"
+                    title="Delete ticket"
+                  >
+                    🗑️ Delete
+                  </button>
                 </div>
               </div>
             </div>

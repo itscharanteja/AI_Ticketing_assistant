@@ -171,6 +171,29 @@
   margin-top: 15px;
   padding-top: 15px;
   border-top: 1px solid #f0f0f0;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ticket-meta-info {
+  display: flex;
+  gap: 20px;
+}
+
+.delete-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.2s ease;
+  margin-left: auto;
+}
+
+.delete-btn:hover {
+  background: #c82333;
 }
 
 .dashboard-loading,
