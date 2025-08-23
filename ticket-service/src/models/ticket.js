@@ -1,7 +1,7 @@
-const { DataTypes } = require("sequelize");
+const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
-  const Ticket = sequelize.define("Ticket", {
+  const Ticket = sequelize.define('Ticket', {
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
@@ -16,8 +16,8 @@ module.exports = (sequelize) => {
       allowNull: false,
     },
     status: {
-      type: DataTypes.ENUM("open", "auto-resolved", "resolved", "in-progress"),
-      defaultValue: "open",
+      type: DataTypes.ENUM('open', 'auto-resolved', 'resolved', 'in-progress'),
+      defaultValue: 'open',
     },
     ai_response: {
       type: DataTypes.TEXT,

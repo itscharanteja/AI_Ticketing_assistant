@@ -1,12 +1,12 @@
-const { Sequelize } = require("sequelize");
-require("dotenv").config();
+const { Sequelize } = require('sequelize');
+require('dotenv').config();
 
 const sequelize = new Sequelize({
-  database: process.env.DB_NAME || "ticketdb",
-  username: process.env.DB_USER || "postgres",
-  password: process.env.DB_PASS || "password",
-  host: process.env.DB_HOST || "localhost",
-  dialect: "postgres",
+  database: process.env.DB_NAME || 'ticketdb',
+  username: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASS || 'password',
+  host: process.env.DB_HOST || 'localhost',
+  dialect: 'postgres',
   logging: false,
 });
 
@@ -16,6 +16,6 @@ const db = {
 };
 
 // Import models
-db.Ticket = require("./ticket")(sequelize);
+db.Ticket = require('./ticket')(sequelize);
 
 module.exports = db;

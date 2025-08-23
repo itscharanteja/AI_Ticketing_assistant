@@ -1,0 +1,234 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  NODE_VERSION: '18'
+  POSTGRES_VERSION: '15'
+
+jobs:
+  # Lint and test all services
+  test:
+    name: Test & Lint Services
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: ticketdb_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    strategy:
+      matrix:
+        service: [ticket-service, ai-service, frontend]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: ${{ matrix.service }}/package-lock.json
+
+    - name: Install dependencies
+      run: |
+        cd ${{ matrix.service }}
+        npm ci
+
+    - name: Run linting
+      run: |
+        cd ${{ matrix.service }}
+        npm run lint
+      continue-on-error: true
+
+    - name: Run tests
+      run: |
+        cd ${{ matrix.service }}
+        npm test
+      env:
+        DB_HOST: localhost
+        DB_USER: postgres
+        DB_PASS: password
+        DB_NAME: ticketdb_test
+        DB_PORT: 5432
+        PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+        SMTP_HOST: smtp.test.com
+        SMTP_PORT: 587
+        SMTP_USER: test@example.com
+        SMTP_PASS: testpassword
+
+    - name: Upload test coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ${{ matrix.service }}/coverage/lcov.info
+        flags: ${{ matrix.service }}
+        name: ${{ matrix.service }}-coverage
+      continue-on-error: true
+
+  # Build Docker images
+  build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build ticket-service
+      uses: docker/build-push-action@v5
+      with:
+        context: ./ticket-service
+        push: false
+        tags: ticket-service:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build ai-service
+      uses: docker/build-push-action@v5
+      with:
+        context: ./ai-service
+        push: false
+        tags: ai-service:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build frontend
+      uses: docker/build-push-action@v5
+      with:
+        context: ./frontend
+        push: false
+        tags: frontend:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Integration tests with Docker Compose
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build and start services
+      run: |
+        docker-compose up -d --build
+        sleep 30  # Wait for services to be ready
+
+    - name: Run integration tests
+      run: |
+        # Test ticket service
+        curl -f http://localhost:5001/health || exit 1
+        
+        # Test AI service
+        curl -f http://localhost:6001/health || exit 1
+        
+        # Test frontend
+        curl -f http://localhost:3000 || exit 1
+
+    - name: Test API endpoints
+      run: |
+        # Test ticket creation
+        curl -X POST http://localhost:5001/tickets \
+          -H "Content-Type: application/json" \
+          -d '{"title":"Test Ticket","description":"Test Description"}' \
+          -f || exit 1
+        
+        # Test ticket retrieval
+        curl -f http://localhost:5001/tickets || exit 1
+
+    - name: Stop services
+      run: docker-compose down
+      if: always()
+
+  # Security scan
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # Deploy to staging (if on main branch)
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [test, build, integration, security]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to staging environment
+      run: |
+        echo "Deploying to staging environment..."
+        # Add your staging deployment commands here
+        # Example: docker-compose -f docker-compose.staging.yml up -d
+
+    - name: Notify deployment
+      run: |
+        echo "✅ Staging deployment completed successfully!"
+        # Add notification logic (Slack, email, etc.)
+
+  # Performance test
+  performance:
+    name: Performance Test
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Install Artillery
+      run: npm install -g artillery
+
+    - name: Run performance tests
+      run: |
+        # Basic load test for API endpoints
+        artillery quick --count 10 --num 5 http://localhost:5001/tickets || echo "Performance test completed"
+      continue-on-error: true

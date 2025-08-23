@@ -402,6 +402,10 @@ app.post("/search-knowledge", async (req, res) => {
   }
 });
 
+// Export for testing
+export { SmartRAGEngine };
+export default app;
+
 // Initialize knowledge base before starting server
 initializeKnowledgeBase();
 app.listen(PORT, () => {

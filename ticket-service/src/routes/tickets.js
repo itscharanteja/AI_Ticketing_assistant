@@ -1,12 +1,12 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const { Ticket } = require("../models");
+const { Ticket } = require('../models');
 
 // Get all tickets
-router.get("/", async (req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
     const tickets = await Ticket.findAll({
-      order: [["created_at", "DESC"]],
+      order: [['created_at', 'DESC']],
     });
     res.json(tickets);
   } catch (error) {
@@ -15,11 +15,11 @@ router.get("/", async (req, res, next) => {
 });
 
 // Get a specific ticket
-router.get("/:id", async (req, res, next) => {
+router.get('/:id', async (req, res, next) => {
   try {
     const ticket = await Ticket.findByPk(req.params.id);
     if (!ticket) {
-      return res.status(404).json({ error: "Ticket not found" });
+      return res.status(404).json({ error: 'Ticket not found' });
     }
     res.json(ticket);
   } catch (error) {
@@ -28,19 +28,19 @@ router.get("/:id", async (req, res, next) => {
 });
 
 // Create a new ticket
-router.post("/", async (req, res, next) => {
+router.post('/', async (req, res, next) => {
   try {
     const { title, description } = req.body;
     if (!title || !description) {
       return res
         .status(400)
-        .json({ error: "Title and description are required" });
+        .json({ error: 'Title and description are required' });
     }
 
     const ticket = await Ticket.create({
       title,
       description,
-      status: "open",
+      status: 'open',
     });
 
     res.status(201).json(ticket);
@@ -50,20 +50,20 @@ router.post("/", async (req, res, next) => {
 });
 
 // Update a ticket
-router.put("/:id", async (req, res, next) => {
+router.put('/:id', async (req, res, next) => {
   try {
-    const { title, description, status, ai_response } = req.body;
+    const { title, description, status, ai_response: aiResponse } = req.body;
     const ticket = await Ticket.findByPk(req.params.id);
 
     if (!ticket) {
-      return res.status(404).json({ error: "Ticket not found" });
+      return res.status(404).json({ error: 'Ticket not found' });
     }
 
     await ticket.update({
       title: title || ticket.title,
       description: description || ticket.description,
       status: status || ticket.status,
-      ai_response: ai_response || ticket.ai_response,
+      ai_response: aiResponse || ticket.ai_response,
     });
 
     res.json(ticket);
@@ -73,11 +73,11 @@ router.put("/:id", async (req, res, next) => {
 });
 
 // Delete a ticket
-router.delete("/:id", async (req, res, next) => {
+router.delete('/:id', async (req, res, next) => {
   try {
     const ticket = await Ticket.findByPk(req.params.id);
     if (!ticket) {
-      return res.status(404).json({ error: "Ticket not found" });
+      return res.status(404).json({ error: 'Ticket not found' });
     }
 
     await ticket.destroy();

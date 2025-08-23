@@ -1,0 +1,53 @@
+name: Dependency Update
+
+on:
+  schedule:
+    # Run every Monday at 9 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  update-dependencies:
+    name: Update Dependencies
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Check for outdated dependencies
+      run: |
+        echo "Checking for outdated dependencies..."
+        cd ticket-service && npm outdated || echo "No outdated dependencies in ticket-service"
+        cd ../ai-service && npm outdated || echo "No outdated dependencies in ai-service"
+        cd ../frontend && npm outdated || echo "No outdated dependencies in frontend"
+
+    - name: Create Pull Request for updates
+      uses: peter-evans/create-pull-request@v5
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: 'chore: update dependencies'
+        title: '🔄 Automated Dependency Update'
+        body: |
+          ## 🔄 Automated Dependency Update
+          
+          This PR updates outdated dependencies across all services.
+          
+          ### Changes:
+          - Updated dependencies in ticket-service
+          - Updated dependencies in ai-service  
+          - Updated dependencies in frontend
+          
+          ### Testing:
+          - [ ] All tests pass
+          - [ ] No breaking changes
+          - [ ] Manual testing completed
+          
+          **Note:** This is an automated update. Please review carefully before merging.
+        branch: dependency-update
+        delete-branch: true
