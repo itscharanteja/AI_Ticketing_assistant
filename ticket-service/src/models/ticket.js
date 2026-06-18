@@ -16,7 +16,13 @@ module.exports = (sequelize) => {
       allowNull: false,
     },
     status: {
-      type: DataTypes.ENUM('open', 'auto-resolved', 'resolved', 'in-progress'),
+      type: DataTypes.ENUM(
+        'open',
+        'auto-resolved',
+        'resolved',
+        'in-progress',
+        'escalated',
+      ),
       defaultValue: 'open',
     },
     ai_response: {

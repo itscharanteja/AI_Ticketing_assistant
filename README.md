@@ -7,7 +7,7 @@
 ## 📌 Project Overview
 This project implements a **production-ready internal ticketing system** for organizations.  
 Employees can submit support tickets through a modern React frontend, and the system automatically:
-- 🤖 **AI Resolution**: Searches knowledge base and provides instant answers
+- 🤖 **AI Resolution**: Searches knowledge base and provides instant Claude-powered answers
 - 📧 **Email Notifications**: Sends AI responses or human escalation notifications
 - 📊 **Dashboard Management**: View, manage, and delete tickets with real-time updates
 - 🔄 **Automated Workflows**: Complete CI/CD pipeline with testing and deployment
@@ -20,7 +20,7 @@ This combines **scalable backend engineering**, **AI integration**, and **modern
 
 ### 🎯 Core Functionality
 - 📝 **Ticket Submission**: Modern React form with email validation
-- 🤖 **AI-Powered Resolution**: Custom SmartRAGEngine with Perplexity AI
+- 🤖 **AI-Powered Resolution**: Custom SmartRAGEngine with Claude
 - 📧 **Email Notifications**: Automated AI responses and human escalation alerts
 - 📊 **Dashboard Management**: Real-time ticket viewing, status tracking, and deletion
 - 🔄 **Auto-refresh**: Dashboard updates every 30 seconds
@@ -44,9 +44,9 @@ This combines **scalable backend engineering**, **AI integration**, and **modern
 ## 🛠️ Tech Stack
 
 ### Backend Services
-- **Runtime**: Node.js 18 + Express
+- **Runtime**: Node.js 20 + Express
 - **Database**: PostgreSQL + Sequelize ORM
-- **AI/ML**: Perplexity AI API + Custom SmartRAGEngine
+- **AI/ML**: Anthropic Claude API + Custom SmartRAGEngine
 - **Email**: Nodemailer with HTML templates
 - **Testing**: Jest + Supertest
 
@@ -69,7 +69,7 @@ This combines **scalable backend engineering**, **AI integration**, and **modern
 
 ```
 MicroserviceProject/
-├── ai-service/           → AI pipeline (Perplexity AI + SmartRAGEngine)
+├── ai-service/           → AI pipeline (Claude + SmartRAGEngine)
 │   ├── src/
 │   │   ├── server.js     → Main AI service with RAG engine
 │   │   ├── SmartRAGEngine.js → Custom RAG implementation
@@ -99,7 +99,7 @@ MicroserviceProject/
 
 **Flow:**
 1. **User submits ticket** → React frontend → Ticket Service → PostgreSQL
-2. **AI processing** → Ticket Service → AI Service → SmartRAGEngine → Perplexity AI
+2. **AI processing** → Ticket Service → AI Service → SmartRAGEngine → Claude
 3. **Email notification** → AI Service → Email templates → User email
 4. **Dashboard update** → Auto-refresh → Real-time status display
 5. **CI/CD pipeline** → Automated testing, building, and deployment
@@ -111,7 +111,7 @@ MicroserviceProject/
 ### 1. Prerequisites
 ```bash
 # Required software
-- Node.js 18+
+- Node.js 20+
 - Docker & Docker Compose
 - PostgreSQL (or use Docker)
 - Git
@@ -135,7 +135,8 @@ DB_NAME=ticketdb
 DB_PORT=5432
 
 # AI Service Configuration
-PERPLEXITY_API_KEY=your_perplexity_api_key
+ANTHROPIC_API_KEY=your_anthropic_api_key
+CLAUDE_MODEL=claude-sonnet-4-6
 
 # Email Configuration (for notifications)
 SMTP_HOST=smtp.gmail.com

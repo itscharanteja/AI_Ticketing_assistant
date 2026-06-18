@@ -1,19 +1,19 @@
 // Advanced text similarity and RAG implementation
 export class SmartRAGEngine {
-  constructor() {
+  constructor () {
     this.knowledgeBase = [];
     this.keywordIndex = new Map();
     this.semanticIndex = new Map();
   }
 
   // Add document to knowledge base with smart indexing
-  addDocument(content, metadata = {}) {
+  addDocument (content, metadata = {}) {
     const doc = {
       id: `doc-${Date.now()}`,
       content,
       metadata,
       keywords: this.extractKeywords(content),
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
     this.knowledgeBase.push(doc);
@@ -22,27 +22,27 @@ export class SmartRAGEngine {
   }
 
   // Extract meaningful keywords from text
-  extractKeywords(text) {
+  extractKeywords (text) {
     const words = text.toLowerCase()
       .replace(/[^\w\s]/g, ' ')
       .split(/\s+/)
       .filter(word => word.length > 2 && !this.isStopWord(word));
-    
+
     return [...new Set(words)];
   }
 
   // Common stop words to filter out
-  isStopWord(word) {
+  isStopWord (word) {
     const stopWords = new Set([
       'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
       'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
-      'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those'
+      'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those',
     ]);
     return stopWords.has(word);
   }
 
   // Index document for fast retrieval
-  indexDocument(doc) {
+  indexDocument (doc) {
     // Keyword indexing
     doc.keywords.forEach(keyword => {
       if (!this.keywordIndex.has(keyword)) {
@@ -60,14 +60,14 @@ export class SmartRAGEngine {
   }
 
   // Generate semantic key based on content structure
-  generateSemanticKey(content) {
+  generateSemanticKey (content) {
     const words = content.toLowerCase().split(/\s+/);
     const keyWords = words.filter(word => word.length > 4).slice(0, 5);
     return keyWords.sort().join('-');
   }
 
   // Smart search combining multiple strategies
-  search(query, limit = 3) {
+  search (query, limit = 3) {
     const queryKeywords = this.extractKeywords(query);
     const results = new Map();
 
@@ -98,7 +98,7 @@ export class SmartRAGEngine {
         const doc = this.knowledgeBase.find(d => d.id === id);
         return {
           ...doc,
-          score
+          score,
         };
       })
       .sort((a, b) => b.score - a.score)
@@ -108,18 +108,18 @@ export class SmartRAGEngine {
   }
 
   // Calculate semantic similarity between two keys
-  calculateSemanticSimilarity(key1, key2) {
+  calculateSemanticSimilarity (key1, key2) {
     const words1 = new Set(key1.split('-'));
     const words2 = new Set(key2.split('-'));
-    
+
     const intersection = new Set([...words1].filter(x => words2.has(x)));
     const union = new Set([...words1, ...words2]);
-    
+
     return intersection.size / union.size;
   }
 
   // Get all documents (for testing)
-  getAllDocuments() {
+  getAllDocuments () {
     return this.knowledgeBase;
   }
 }

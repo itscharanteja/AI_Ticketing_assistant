@@ -1,26 +1,25 @@
-import express from "express";
-import cors from "cors";
-import OpenAI from "openai";
-import axios from "axios";
-import { Document } from "@langchain/core/documents";
-import EmailService from "./emailService.js";
+import express from 'express';
+import cors from 'cors';
+import Anthropic from '@anthropic-ai/sdk';
+import axios from 'axios';
+import EmailService from './emailService.js';
 
 // Advanced text similarity and RAG implementation
 class SmartRAGEngine {
-  constructor() {
+  constructor () {
     this.knowledgeBase = [];
     this.keywordIndex = new Map();
     this.semanticIndex = new Map();
   }
 
   // Add document to knowledge base with smart indexing
-  addDocument(content, metadata = {}) {
+  addDocument (content, metadata = {}) {
     const doc = {
       id: `doc-${Date.now()}`,
       content,
       metadata,
       keywords: this.extractKeywords(content),
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
     this.knowledgeBase.push(doc);
@@ -29,27 +28,27 @@ class SmartRAGEngine {
   }
 
   // Extract meaningful keywords from text
-  extractKeywords(text) {
+  extractKeywords (text) {
     const words = text.toLowerCase()
       .replace(/[^\w\s]/g, ' ')
       .split(/\s+/)
       .filter(word => word.length > 2 && !this.isStopWord(word));
-    
+
     return [...new Set(words)];
   }
 
   // Common stop words to filter out
-  isStopWord(word) {
+  isStopWord (word) {
     const stopWords = new Set([
       'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
       'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
-      'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those'
+      'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those',
     ]);
     return stopWords.has(word);
   }
 
   // Index document for fast retrieval
-  indexDocument(doc) {
+  indexDocument (doc) {
     // Keyword indexing
     doc.keywords.forEach(keyword => {
       if (!this.keywordIndex.has(keyword)) {
@@ -67,14 +66,14 @@ class SmartRAGEngine {
   }
 
   // Generate semantic key based on content structure
-  generateSemanticKey(content) {
+  generateSemanticKey (content) {
     const words = content.toLowerCase().split(/\s+/);
     const keyWords = words.filter(word => word.length > 4).slice(0, 5);
     return keyWords.sort().join('-');
   }
 
   // Smart search combining multiple strategies
-  search(query, limit = 3) {
+  search (query, limit = 3) {
     const queryKeywords = this.extractKeywords(query);
     const results = new Map();
 
@@ -120,7 +119,7 @@ class SmartRAGEngine {
   }
 
   // Calculate semantic similarity between two semantic keys
-  calculateSemanticSimilarity(key1, key2) {
+  calculateSemanticSimilarity (key1, key2) {
     const words1 = key1.split('-');
     const words2 = key2.split('-');
     const commonWords = words1.filter(word => words2.includes(word));
@@ -128,12 +127,12 @@ class SmartRAGEngine {
   }
 
   // Calculate content relevance using advanced text analysis
-  calculateContentRelevance(query, content) {
+  calculateContentRelevance (query, content) {
     const queryWords = query.toLowerCase().split(/\s+/);
     const contentWords = content.toLowerCase().split(/\s+/);
-    
+
     let score = 0;
-    
+
     // Exact word matches
     queryWords.forEach(word => {
       if (contentWords.includes(word)) {
@@ -153,7 +152,7 @@ class SmartRAGEngine {
     // Phrase matching
     const queryPhrases = this.extractPhrases(query);
     const contentPhrases = this.extractPhrases(content);
-    
+
     queryPhrases.forEach(phrase => {
       if (contentPhrases.includes(phrase)) {
         score += 2;
@@ -164,7 +163,7 @@ class SmartRAGEngine {
   }
 
   // Extract meaningful phrases
-  extractPhrases(text) {
+  extractPhrases (text) {
     const sentences = text.split(/[.!?]+/);
     return sentences
       .map(sentence => sentence.trim().toLowerCase())
@@ -173,35 +172,36 @@ class SmartRAGEngine {
   }
 
   // Get all documents
-  getAllDocuments() {
+  getAllDocuments () {
     return this.knowledgeBase;
   }
 
   // Get document by ID
-  getDocument(id) {
+  getDocument (id) {
     return this.knowledgeBase.find(doc => doc.id === id);
   }
 }
 
 const app = express();
 const PORT = process.env.PORT || 6000;
+const TICKET_SERVICE_URL = process.env.TICKET_SERVICE_URL || 'http://localhost:5001';
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-sonnet-4-6';
 
 // Middleware
 app.use(cors({
   origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
-  credentials: true
+  credentials: true,
 }));
 app.use(express.json());
 
-if (!process.env.PERPLEXITY_API_KEY) {
-  console.error("PERPLEXITY_API_KEY not set");
+if (!process.env.ANTHROPIC_API_KEY) {
+  console.error('ANTHROPIC_API_KEY not set');
   process.exit(1);
 }
 
 // Initialize clients
-const model = new OpenAI({
-  apiKey: process.env.PERPLEXITY_API_KEY,
-  baseURL: "https://api.perplexity.ai",
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 // Initialize Smart RAG Engine
@@ -211,44 +211,54 @@ const ragEngine = new SmartRAGEngine();
 const emailService = new EmailService();
 
 // Initialize knowledge base with sample documents
-function initializeKnowledgeBase() {
+function initializeKnowledgeBase () {
   try {
     // Add sample documents to the RAG engine
     ragEngine.addDocument(
       "To reset your password, visit the login page and click 'Forgot Password'. You'll receive an email with reset instructions within 5 minutes.",
-      { category: "authentication", priority: "high" }
+      { category: 'authentication', priority: 'high' },
     );
-    
+
     ragEngine.addDocument(
-      "For network connectivity issues, try these steps: 1) Restart your router 2) Check cable connections 3) Run network diagnostics 4) Contact IT if issues persist",
-      { category: "network", priority: "medium" }
+      'For network connectivity issues, try these steps: 1) Restart your router 2) Check cable connections 3) Run network diagnostics 4) Contact IT if issues persist',
+      { category: 'network', priority: 'medium' },
     );
-    
+
     ragEngine.addDocument(
       "To request new hardware, submit a ticket with your manager's approval. Include: device type, justification, budget code, and delivery timeline.",
-      { category: "hardware", priority: "low" }
+      { category: 'hardware', priority: 'low' },
     );
-    
-    console.log("Smart RAG Engine initialized successfully");
+
+    console.log('Smart RAG Engine initialized successfully');
   } catch (error) {
-    console.error("Error initializing knowledge base:", error);
+    console.error('Error initializing knowledge base:', error);
   }
 }
 
 // Health check endpoint
-app.get("/health", (req, res) => {
+app.get('/health', (req, res) => {
   res.json({
-    status: "healthy",
-    ragEngine: "initialized",
+    status: 'healthy',
+    aiProvider: 'anthropic',
+    model: CLAUDE_MODEL,
+    ragEngine: 'initialized',
     totalDocuments: ragEngine.getAllDocuments().length,
-    searchStrategies: ["keyword", "semantic", "content-relevance"]
+    searchStrategies: ['keyword', 'semantic', 'content-relevance'],
   });
 });
 
+function extractClaudeText (contentBlocks) {
+  return contentBlocks
+    .filter((block) => block.type === 'text')
+    .map((block) => block.text)
+    .join('\n')
+    .trim();
+}
+
 // RAG-enhanced ticket processing
-app.post("/process-ticket", async (req, res) => {
+app.post('/process-ticket', async (req, res) => {
   try {
-    const { title, description, userEmail = "user@example.com", ticketId } = req.body;
+    const { title, description, userEmail = 'user@example.com', ticketId } = req.body;
 
     // Create search query from title and description
     const searchQuery = `${title} ${description}`;
@@ -263,7 +273,7 @@ app.post("/process-ticket", async (req, res) => {
     const prompt = `You are a helpful IT support assistant. Use the following knowledge base entries to help answer the support ticket.
 
 RELEVANT KNOWLEDGE BASE ENTRIES:
-${contextDocs.map((doc, index) => `${index + 1}. ${doc}`).join("\n")}
+${contextDocs.map((doc, index) => `${index + 1}. ${doc}`).join('\n')}
 
 SUPPORT TICKET:
 Title: ${title}
@@ -275,34 +285,32 @@ Instructions:
 - Be specific and actionable in your response
 - Reference which knowledge base entry you're using if applicable`;
 
-    const response = await model.chat.completions.create({
-      model: "sonar",
+    const response = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 1000,
+      temperature: 0.3,
+      system:
+        'You are a helpful IT support assistant specializing in providing accurate, actionable solutions.',
       messages: [
         {
-          role: "system",
-          content:
-            "You are a helpful IT support assistant specializing in providing accurate, actionable solutions.",
-        },
-        {
-          role: "user",
+          role: 'user',
           content: prompt,
         },
       ],
-      temperature: 0.3,
     });
 
-    const aiResponse = response.choices[0].message.content;
-    const isEscalated = aiResponse.includes("escalating to human support");
-    const ticketStatus = isEscalated ? "escalated" : "auto-resolved";
+    const aiResponse = extractClaudeText(response.content);
+    const isEscalated = /escalat/i.test(aiResponse);
+    const ticketStatus = isEscalated ? 'escalated' : 'auto-resolved';
 
     // Update ticket in database with AI response and status
     console.log(`🔄 Attempting to update ticket ${ticketId} with status: ${ticketStatus}`);
     try {
-      const ticketResponse = await axios.put(`http://ticket-service:5000/tickets/${ticketId}`, {
+      await axios.put(`${TICKET_SERVICE_URL}/tickets/${ticketId}`, {
         status: ticketStatus,
-        ai_response: aiResponse
+        ai_response: aiResponse,
       });
-      
+
       console.log('✅ Ticket updated in database with AI response');
     } catch (dbError) {
       console.error('❌ Database update error:', dbError);
@@ -311,19 +319,19 @@ Instructions:
     // Send email notification
     try {
       console.log('📧 Sending email to:', userEmail);
-      
+
       if (isEscalated) {
         await emailService.sendHumanEscalationEmail(userEmail, {
           id: ticketId,
           title,
-          description
+          description,
         });
         console.log('✅ Human escalation email sent successfully');
       } else {
         await emailService.sendAIResponseEmail(userEmail, {
           id: ticketId,
           title,
-          description
+          description,
         }, aiResponse);
         console.log('✅ AI response email sent successfully');
       }
@@ -337,49 +345,49 @@ Instructions:
       status: ticketStatus,
       retrieved_documents: relevantDocs.length,
       relevant_context: contextDocs,
-      email_sent: true
+      email_sent: true,
     });
   } catch (error) {
-    console.error("Error processing ticket:", error);
+    console.error('Error processing ticket:', error);
     res.status(500).json({
-      error: "Error processing ticket",
+      error: 'Error processing ticket',
       details: error.message,
     });
   }
 });
 
 // Add document to knowledge base
-app.post("/add-knowledge", async (req, res) => {
+app.post('/add-knowledge', async (req, res) => {
   try {
-    const { content, category = "general", priority = "medium" } = req.body;
+    const { content, category = 'general', priority = 'medium' } = req.body;
 
     if (!content) {
-      return res.status(400).json({ error: "Content is required" });
+      return res.status(400).json({ error: 'Content is required' });
     }
 
     // Add to Smart RAG Engine
-    const newDoc = ragEngine.addDocument(content, { category, priority });
+    ragEngine.addDocument(content, { category, priority });
 
     res.json({
-      message: "Knowledge base entry added successfully",
+      message: 'Knowledge base entry added successfully',
       total_documents: ragEngine.getAllDocuments().length,
     });
   } catch (error) {
-    console.error("Error adding to knowledge base:", error);
+    console.error('Error adding to knowledge base:', error);
     res.status(500).json({
-      error: "Error adding to knowledge base",
+      error: 'Error adding to knowledge base',
       details: error.message,
     });
   }
 });
 
 // Search knowledge base endpoint
-app.post("/search-knowledge", async (req, res) => {
+app.post('/search-knowledge', async (req, res) => {
   try {
     const { query, limit = 3 } = req.body;
 
     if (!query) {
-      return res.status(400).json({ error: "Query is required" });
+      return res.status(400).json({ error: 'Query is required' });
     }
 
     const results = ragEngine.search(query, limit);
@@ -390,13 +398,13 @@ app.post("/search-knowledge", async (req, res) => {
         content: doc.content,
         metadata: doc.metadata,
         similarity_score: doc.score,
-        keywords: doc.keywords
+        keywords: doc.keywords,
       })),
     });
   } catch (error) {
-    console.error("Error searching knowledge base:", error);
+    console.error('Error searching knowledge base:', error);
     res.status(500).json({
-      error: "Error searching knowledge base",
+      error: 'Error searching knowledge base',
       details: error.message,
     });
   }

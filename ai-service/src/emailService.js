@@ -1,25 +1,25 @@
 import nodemailer from 'nodemailer';
 
 class EmailService {
-  constructor() {
+  constructor () {
     this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port: process.env.SMTP_PORT || 587,
       secure: false,
       auth: {
         user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-      }
+        pass: process.env.SMTP_PASS,
+      },
     });
   }
 
   // Send AI response email
-  async sendAIResponseEmail(userEmail, ticketData, aiResponse) {
+  async sendAIResponseEmail (userEmail, ticketData, aiResponse) {
     const mailOptions = {
       from: `"AI Support Team" <${process.env.SMTP_USER}>`,
       to: userEmail,
       subject: `Ticket #${ticketData.id} - AI Response: ${ticketData.title}`,
-      html: this.generateAIResponseTemplate(ticketData, aiResponse)
+      html: this.generateAIResponseTemplate(ticketData, aiResponse),
     };
 
     try {
@@ -33,12 +33,12 @@ class EmailService {
   }
 
   // Send human escalation email
-  async sendHumanEscalationEmail(userEmail, ticketData) {
+  async sendHumanEscalationEmail (userEmail, ticketData) {
     const mailOptions = {
       from: `"AI Support Team" <${process.env.SMTP_USER}>`,
       to: userEmail,
       subject: `Ticket #${ticketData.id} - Escalated to Human Support: ${ticketData.title}`,
-      html: this.generateHumanEscalationTemplate(ticketData)
+      html: this.generateHumanEscalationTemplate(ticketData),
     };
 
     try {
@@ -52,7 +52,7 @@ class EmailService {
   }
 
   // Generate AI response email template
-  generateAIResponseTemplate(ticketData, aiResponse) {
+  generateAIResponseTemplate (ticketData, aiResponse) {
     return `
       <!DOCTYPE html>
       <html>
@@ -99,7 +99,7 @@ class EmailService {
   }
 
   // Generate human escalation email template
-  generateHumanEscalationTemplate(ticketData) {
+  generateHumanEscalationTemplate (ticketData) {
     return `
       <!DOCTYPE html>
       <html>

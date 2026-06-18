@@ -1,7 +1,7 @@
 {
   "name": "ai-service",
   "version": "1.0.0",
-  "description": "AI Service with Ollama integration for ticket processing",
+  "description": "AI Service with Claude integration for ticket processing",
   "main": "src/server.js",
   "type": "module",
   "scripts": {
@@ -17,23 +17,23 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.104.2",
     "@langchain/community": "^0.0.10",
     "@langchain/core": "0.1.10",
     "axios": "^1.6.0",
     "cors": "2.8.5",
     "dotenv": "16.3.1",
     "express": "4.18.2",
-    "nodemailer": "^6.9.7",
-    "openai": "^5.12.2"
+    "nodemailer": "^6.9.7"
   },
   "devDependencies": {
-    "nodemon": "3.0.1",
-    "jest": "^29.7.0",
-    "supertest": "^6.3.3",
     "eslint": "^8.57.0",
     "eslint-config-standard": "^17.1.0",
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-n": "^16.6.2",
-    "eslint-plugin-promise": "^6.1.1"
+    "eslint-plugin-promise": "^6.1.1",
+    "jest": "^29.7.0",
+    "nodemon": "3.0.1",
+    "supertest": "^6.3.3"
   }
 }

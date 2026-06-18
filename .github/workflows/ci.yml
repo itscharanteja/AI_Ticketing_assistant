@@ -7,7 +7,7 @@ on:
     branches: [ main, develop ]
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '20'
   POSTGRES_VERSION: '15'
 
 jobs:
@@ -66,7 +66,8 @@ jobs:
         DB_PASS: password
         DB_NAME: ticketdb_test
         DB_PORT: 5432
-        PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        CLAUDE_MODEL: claude-sonnet-4-6
         SMTP_HOST: smtp.test.com
         SMTP_PORT: 587
         SMTP_USER: test@example.com
