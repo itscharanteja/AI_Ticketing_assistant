@@ -1,4 +1,5 @@
 import { SmartRAGEngine } from '../src/SmartRAGEngine.js';
+import { parseAiStatusAndResponse } from '../src/server.js';
 
 describe('AI Service - SmartRAGEngine', () => {
   let ragEngine;
@@ -115,6 +116,75 @@ describe('AI Service - SmartRAGEngine', () => {
       expect(doc2.id).toBeDefined();
       expect(doc1.id).toMatch(/^doc-\d+$/);
       expect(doc2.id).toMatch(/^doc-\d+$/);
+    });
+  });
+
+  describe('parseAiStatusAndResponse', () => {
+    it('should correctly parse STATUS: AUTO_RESOLVED and strip prefix', () => {
+      const rawText = 'STATUS: AUTO_RESOLVED\n\nTo reset your password, visit the login page.';
+      const result = parseAiStatusAndResponse(rawText, 1);
+
+      expect(result.status).toBe('auto-resolved');
+      expect(result.isEscalated).toBe(false);
+      expect(result.aiResponse).toBe('To reset your password, visit the login page.');
+    });
+
+    it('should correctly handle AUTO_RESOLVED responses that mention escalation in fallback advice', () => {
+      const rawText = 'STATUS: AUTO_RESOLVED\n\nFollow steps 1-3 to resolve your issue. If you still need help, you can escalate to human support.';
+      const result = parseAiStatusAndResponse(rawText, 1);
+
+      expect(result.status).toBe('auto-resolved');
+      expect(result.isEscalated).toBe(false);
+      expect(result.aiResponse).toBe('Follow steps 1-3 to resolve your issue. If you still need help, you can escalate to human support.');
+    });
+
+    it('should correctly parse STATUS: ESCALATED and strip prefix', () => {
+      const rawText = 'STATUS: ESCALATED\n\nThis issue is not covered in the knowledge base and requires human assistance.';
+      const result = parseAiStatusAndResponse(rawText, 0);
+
+      expect(result.status).toBe('escalated');
+      expect(result.isEscalated).toBe(true);
+      expect(result.aiResponse).toBe('This issue is not covered in the knowledge base and requires human assistance.');
+    });
+
+    it('should handle markdown formatted and hyphenated tags', () => {
+      const boldResolved = '**STATUS: AUTO_RESOLVED**\n\nSolution text';
+      expect(parseAiStatusAndResponse(boldResolved, 1)).toEqual({
+        status: 'auto-resolved',
+        isEscalated: false,
+        aiResponse: 'Solution text',
+      });
+
+      const hyphenResolved = 'STATUS: AUTO-RESOLVED\n\nSolution text';
+      expect(parseAiStatusAndResponse(hyphenResolved, 1)).toEqual({
+        status: 'auto-resolved',
+        isEscalated: false,
+        aiResponse: 'Solution text',
+      });
+
+      const boldEscalated = '**STATUS: ESCALATED**\n\nEscalation reason';
+      expect(parseAiStatusAndResponse(boldEscalated, 0)).toEqual({
+        status: 'escalated',
+        isEscalated: true,
+        aiResponse: 'Escalation reason',
+      });
+    });
+
+    it('should fallback to escalated when no status tag exists and 0 relevant docs found', () => {
+      const rawText = 'I cannot help with this.';
+      const result = parseAiStatusAndResponse(rawText, 0);
+
+      expect(result.status).toBe('escalated');
+      expect(result.isEscalated).toBe(true);
+      expect(result.aiResponse).toBe('I cannot help with this.');
+    });
+
+    it('should fallback to escalated when no status tag exists and first line mentions escalation', () => {
+      const rawText = 'This ticket should be escalated to human support.\nAdditional details...';
+      const result = parseAiStatusAndResponse(rawText, 1);
+
+      expect(result.status).toBe('escalated');
+      expect(result.isEscalated).toBe(true);
     });
   });
 });

@@ -457,10 +457,10 @@ Behavior:
 3. Builds a Claude prompt with retrieved knowledge entries and ticket data.
 4. Calls Anthropic Messages API.
 5. Extracts text response.
-6. Checks `/escalat/i` against the AI response.
+6. Parses the status prefix tag (`STATUS: AUTO_RESOLVED` or `STATUS: ESCALATED`) from the first line and extracts clean response content.
 7. Sets status:
-   - `escalated` if the AI response contains "escalat" in any casing.
-   - `auto-resolved` otherwise.
+   - `escalated` if status tag is `STATUS: ESCALATED` (or fallback: first line mentions escalation / 0 relevant docs).
+   - `auto-resolved` if status tag is `STATUS: AUTO_RESOLVED`.
 8. Calls Ticket Service:
 
 ```http

@@ -1,0 +1,10 @@
+{
+  "name": "ai-ticketing-assistant",
+  "version": "1.0.0",
+  "description": "AI-Powered Internal Ticketing Assistant",
+  "scripts": {
+    "start": "./start-local.sh",
+    "dev": "./start-local.sh",
+    "test": "npm run test --prefix ticket-service && npm run test --prefix ai-service && npm run test --prefix frontend -- --watchAll=false"
+  }
+}

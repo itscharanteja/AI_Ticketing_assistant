@@ -15,8 +15,9 @@ class EmailService {
 
   // Send AI response email
   async sendAIResponseEmail (userEmail, ticketData, aiResponse) {
+    const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || 'support@example.com';
     const mailOptions = {
-      from: `"AI Support Team" <${process.env.SMTP_USER}>`,
+      from: `"AI Support Team" <${fromAddress}>`,
       to: userEmail,
       subject: `Ticket #${ticketData.id} - AI Response: ${ticketData.title}`,
       html: this.generateAIResponseTemplate(ticketData, aiResponse),
@@ -34,8 +35,9 @@ class EmailService {
 
   // Send human escalation email
   async sendHumanEscalationEmail (userEmail, ticketData) {
+    const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || 'support@example.com';
     const mailOptions = {
-      from: `"AI Support Team" <${process.env.SMTP_USER}>`,
+      from: `"AI Support Team" <${fromAddress}>`,
       to: userEmail,
       subject: `Ticket #${ticketData.id} - Escalated to Human Support: ${ticketData.title}`,
       html: this.generateHumanEscalationTemplate(ticketData),
